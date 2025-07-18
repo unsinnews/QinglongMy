@@ -92,6 +92,8 @@ push_config = {
     'PUSH_KEY_MY': '',  # server 酱的 PUSH_KEY，兼容旧版与 Turbo 版  我的
     'PUSH_KEY_SECOND': '',  # server 酱的 PUSH_KEY，兼容旧版与 Turbo 版  我的
     'PUSH_ME_KEY': '',  # push.i-i.me的用户令牌
+    
+    'WW_BOT_KEY': '',  # 企业微信机器人的 Webhook Key
 }
 notify_function = []
 # fmt: on
@@ -205,7 +207,68 @@ def dingding_bot_with_key(title: str, content: str, bot_key: str) -> None:
     if not response["errcode"]:
         print(f"钉钉机器人{bot_key} 推送成功！")
     else:
-        print("钉钉机器人{bot_key} 推送失败！")
+        print(f"钉钉机器人{bot_key} 推送失败！")
+
+
+def wechat_work_bot(title: str, content: str) -> None:
+    """
+    使用企业微信机器人推送消息。
+    """
+    if not push_config.get("WW_BOT_KEY"):
+        print("企业微信机器人的 WW_BOT_KEY 未设置!!\n取消推送")
+        return
+    print("企业微信机器人服务启动")
+
+    url = f'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={push_config.get("WW_BOT_KEY")}'
+    headers = {"Content-Type": "application/json"}
+    
+    # 支持 Markdown 格式
+    data = {
+        "msgtype": "markdown",
+        "markdown": {
+            "content": f"## {title}\n{content}"
+        }
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=15).json()
+        if response.get("errcode") == 0:
+            print("企业微信机器人推送成功！")
+        else:
+            print(f"企业微信机器人推送失败！错误码：{response.get('errcode')}, 错误信息：{response.get('errmsg')}")
+    except Exception as e:
+        print(f"企业微信机器人推送异常：{str(e)}")
+
+
+def wechat_work_bot_with_key(title: str, content: str, bot_key: str) -> None:
+    """
+    使用企业微信机器人推送消息（支持自定义 key）。
+    """
+    if not os.getenv(bot_key):
+        print(f"企业微信机器人 {bot_key} 未设置!!\n取消推送")
+        return
+    print(f"企业微信机器人 {bot_key} 服务启动")
+
+    webhook_key = os.getenv(bot_key)
+    url = f'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={webhook_key}'
+    headers = {"Content-Type": "application/json"}
+    
+    # 支持 Markdown 格式
+    data = {
+        "msgtype": "markdown",
+        "markdown": {
+            "content": f"## {title}\n{content}"
+        }
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=15).json()
+        if response.get("errcode") == 0:
+            print(f"企业微信机器人 {bot_key} 推送成功！")
+        else:
+            print(f"企业微信机器人 {bot_key} 推送失败！错误码：{response.get('errcode')}, 错误信息：{response.get('errmsg')}")
+    except Exception as e:
+        print(f"企业微信机器人 {bot_key} 推送异常：{str(e)}")
 
 
 def feishu_bot(title: str, content: str) -> None:
@@ -297,7 +360,7 @@ def serverJ(title: str, content: str) -> None:
     if push_config.get("PUSH_KEY").index("SCT") != -1:
         url = f'https://sctapi.ftqq.com/{push_config.get("PUSH_KEY")}.send'
     else:
-        url = f'https://sc.ftqq.com/${push_config.get("PUSH_KEY")}.send'
+        url = f'https://sc.ftqq.com/{push_config.get("PUSH_KEY")}.send'
     response = requests.post(url, data=data).json()
 
     if response.get("errno") == 0 or response.get("code") == 0:
@@ -400,6 +463,8 @@ if push_config.get("QMSG_KEY") and push_config.get("QMSG_TYPE"):
     notify_function.append(qmsg_bot)
 if push_config.get("TG_BOT_TOKEN") and push_config.get("TG_USER_ID"):
     notify_function.append(telegram_bot)
+if push_config.get("WW_BOT_KEY"):
+    notify_function.append(wechat_work_bot)
 
 
 def send(title: str, content: str) -> None:
